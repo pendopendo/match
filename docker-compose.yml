@@ -24,7 +24,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - DB_CONNECTION=postgres://postgres:postgres@db:5432/matchme?sslmode=disable
+      - DB_CONNECTION=postgres://postgres:matchmepass@db:5432/matchme?sslmode=disable
       - JWT_SECRET=your-secret-key
     depends_on:
       - db
@@ -37,7 +37,7 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=matchmepass
       - POSTGRES_DB=matchme
     volumes:
       - postgres_data:/var/lib/postgresql/data

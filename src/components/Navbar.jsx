@@ -8,6 +8,8 @@ function Navbar({ isAuthenticated, onLogout }) {
         {isAuthenticated ? (
           <>
             <Link to="/profile">Profile</Link>
+            <Link to="/browse">Browse</Link>
+            <Link to="/chats">Chats</Link>
             <button onClick={onLogout} className="nav-button">Logout</button>
           </>
         ) : (
