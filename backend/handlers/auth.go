@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -12,6 +13,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
+
+func init() {
+	if os.Getenv("JWT_SECRET") == "" {
+		log.Fatal("JWT_SECRET environment variable is not set")
+	}
+	jwtKey = []byte(os.Getenv("JWT_SECRET"))
+}
 
 var jwtKey = []byte(os.Getenv("JWT_SECRET"))
 
@@ -65,19 +73,21 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	// Create empty profile and bio
 	_, err = database.DB.Exec(`
-		INSERT INTO profiles (user_id)
-		VALUES ($1)
+		INSERT INTO profiles (user_id, name, bio, profile_picture, location)
+		VALUES ($1, '', '', '', '')
 	`, userID)
 	if err != nil {
+		log.Printf("Failed to create profile: %v", err)
 		http.Error(w, "Error creating profile", http.StatusInternalServerError)
 		return
 	}
 
 	_, err = database.DB.Exec(`
-		INSERT INTO user_bios (user_id)
-		VALUES ($1)
+		INSERT INTO user_bios (user_id, interests, hobbies, music_preferences, food_preferences, looking_for)
+		VALUES ($1, ARRAY[]::TEXT[], ARRAY[]::TEXT[], ARRAY[]::TEXT[], ARRAY[]::TEXT[], ARRAY[]::TEXT[])
 	`, userID)
 	if err != nil {
+		log.Printf("Failed to create bio: %v", err)
 		http.Error(w, "Error creating bio", http.StatusInternalServerError)
 		return
 	}
@@ -88,24 +98,29 @@ func Register(w http.ResponseWriter, r *http.Request) {
 func Login(w http.ResponseWriter, r *http.Request) {
 	var req models.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Failed to decode request body: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
+	log.Printf("Login attempt for email: %s", req.Email)
+
 	var user models.User
 	err := database.DB.QueryRow(`
-		SELECT id, email, password
-		FROM users
-		WHERE email = $1
-	`, req.Email).Scan(&user.ID, &user.Email, &user.Password)
+        SELECT id, email, password
+        FROM users
+        WHERE email = $1
+    `, req.Email).Scan(&user.ID, &user.Email, &user.Password)
 
 	if err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		log.Printf("Database query error: %v", err)
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		log.Printf("Password comparison failed: %v", err)
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
 
@@ -120,11 +135,14 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
+		log.Printf("Token signing error: %v", err)
 		http.Error(w, "Error creating token", http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"token": tokenString,
 	})
+	log.Printf("Login successful for user ID: %d", user.ID)
 }

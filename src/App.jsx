@@ -27,18 +27,20 @@ function App() {
     setUser(null);
   };
 
+  const token = localStorage.getItem('token');
+
   return (
     <Router>
       <div className="app">
         <Navbar isAuthenticated={isAuthenticated} onLogout={handleLogout} />
         <Routes>
-          <Route path="/login" element={!isAuthenticated ? <Login setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/profile" />} />
-          <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/profile" />} />
-          <Route path="/profile" element={isAuthenticated ? <Profile user={user} /> : <Navigate to="/login" />} />
+          <Route path="/" element={!token ? <Navigate to="/login" /> : <Navigate to="/profile" />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/profile" element={!token ? <Navigate to="/login" /> : <Profile />} />
           <Route path="/browse" element={isAuthenticated ? <Browse /> : <Navigate to="/login" />} />
           <Route path="/chats" element={isAuthenticated ? <ChatList /> : <Navigate to="/login" />} />
           <Route path="/chat/:connectionId" element={isAuthenticated ? <Chat /> : <Navigate to="/login" />} />
-          <Route path="/" element={<Navigate to={isAuthenticated ? "/profile" : "/login"} />} />
         </Routes>
       </div>
     </Router>

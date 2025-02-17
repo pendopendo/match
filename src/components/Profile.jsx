@@ -1,8 +1,20 @@
 import { useState, useEffect } from 'react';
 
 function Profile() {
-  const [profile, setProfile] = useState(null);
-  const [bio, setBio] = useState(null);
+  const [profile, setProfile] = useState({
+    name: '',
+    bio: '',
+    location: '',
+    profile_picture: ''
+  });
+  
+  const [bio, setBio] = useState({
+    interests: [],
+    hobbies: [],
+    music_preferences: [],
+    food_preferences: [],
+    looking_for: []
+  });
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,64 +34,41 @@ function Profile() {
   });
 
   useEffect(() => {
-    fetchProfileData();
-  }, []);
+    const fetchData = async () => {
+      try {
+        const [profileRes, bioRes] = await Promise.all([
+          fetch('http://localhost:8080/api/me/profile', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }),
+          fetch('http://localhost:8080/api/me/bio', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          })
+        ]);
 
-  const fetchProfileData = async () => {
-    try {
-      const [profileRes, bioRes, recommendationsRes] = await Promise.all([
-        fetch('http://localhost:8080/api/me/profile', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-        }),
-        fetch('http://localhost:8080/api/me/bio', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-        }),
-        fetch('http://localhost:8080/api/recommendations', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-        })
-      ]);
+        if (!profileRes.ok || !bioRes.ok) {
+          throw new Error('Failed to fetch data');
+        }
 
-      if (profileRes.ok) {
         const profileData = await profileRes.json();
-        setProfile(profileData);
-        setFormData(prev => ({
-          ...prev,
-          name: profileData.name || '',
-          bio: profileData.bio || '',
-          profilePicture: profileData.profile_picture || '',
-          location: profileData.location || ''
-        }));
-      }
-
-      if (bioRes.ok) {
         const bioData = await bioRes.json();
-        setBio(bioData);
-        setFormData(prev => ({
-          ...prev,
-          interests: bioData.interests || [],
-          hobbies: bioData.hobbies || [],
-          musicPreferences: bioData.music_preferences || [],
-          foodPreferences: bioData.food_preferences || [],
-          lookingFor: bioData.looking_for || []
-        }));
-      }
 
-      if (recommendationsRes.ok) {
-        const recommendationsData = await recommendationsRes.json();
-        setRecommendations(recommendationsData.recommendations);
+        setProfile(profileData);
+        setBio(bioData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        // Optional: Redirect to login if unauthorized
+        if (!localStorage.getItem('token')) {
+          window.location.href = '/login';
+        }
       }
-    } catch (err) {
-      setError('Failed to load profile data');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchData();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

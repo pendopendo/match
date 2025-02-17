@@ -10,24 +10,29 @@ function Login({ setIsAuthenticated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:8080/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+        const response = await fetch('http://localhost:8080/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email,
+                password: password,
+            }),
+        });
 
-      if (!response.ok) {
-        throw new Error('Login failed');
-      }
+        if (!response.ok) {
+            const errorData = await response.text();
+            console.error('Login failed:', errorData);
+            // Handle error appropriately
+            return;
+        }
 
-      const data = await response.json();
-      localStorage.setItem('token', data.token);
-      setIsAuthenticated(true);
-      navigate('/profile');
-    } catch (err) {
-      setError('Invalid email or password');
+        const data = await response.json();
+        localStorage.setItem('token', data.token);
+        navigate('/profile');
+    } catch (error) {
+        console.error('Login error:', error);
     }
   };
 
