@@ -11,17 +11,38 @@ import (
 	"match-me/models"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 )
 
+var jwtKey []byte
+
 func init() {
+	// Try multiple possible locations for .env file
+	envFiles := []string{
+		".env",       // Try current directory
+		"../.env",    // Try parent directory
+		"../../.env", // Try project root
+	}
+
+	var loaded bool
+	for _, file := range envFiles {
+		if err := godotenv.Load(file); err == nil {
+			loaded = true
+			break
+		}
+	}
+
+	if !loaded {
+		log.Printf("Warning: No .env file found")
+	}
+
+	// Check if JWT_SECRET is set
 	if os.Getenv("JWT_SECRET") == "" {
 		log.Fatal("JWT_SECRET environment variable is not set")
 	}
 	jwtKey = []byte(os.Getenv("JWT_SECRET"))
 }
-
-var jwtKey = []byte(os.Getenv("JWT_SECRET"))
 
 type Claims struct {
 	UserID int `json:"user_id"`

@@ -35,40 +35,47 @@ function Profile() {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const [profileRes, bioRes] = await Promise.all([
-          fetch('http://localhost:8080/api/me/profile', {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                navigate('/login');
+                return;
             }
-          }),
-          fetch('http://localhost:8080/api/me/bio', {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+
+            const [profileRes, bioRes] = await Promise.all([
+                fetch('http://localhost:8080/api/me/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }),
+                fetch('http://localhost:8080/api/me/bio', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+            ]);
+
+            if (!profileRes.ok || !bioRes.ok) {
+                console.error('Profile Response:', await profileRes.text());
+                console.error('Bio Response:', await bioRes.text());
+                throw new Error('Failed to fetch data');
             }
-          })
-        ]);
 
-        if (!profileRes.ok || !bioRes.ok) {
-          throw new Error('Failed to fetch data');
+            const profileData = await profileRes.json();
+            const bioData = await bioRes.json();
+
+            setProfile(profileData);
+            setBio(bioData);
+            setLoading(false);
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            setLoading(false);
+            setError(error.message);
         }
-
-        const profileData = await profileRes.json();
-        const bioData = await bioRes.json();
-
-        setProfile(profileData);
-        setBio(bioData);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        // Optional: Redirect to login if unauthorized
-        if (!localStorage.getItem('token')) {
-          window.location.href = '/login';
-        }
-      }
     };
 
     fetchData();
-  }, []);
+}, [navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

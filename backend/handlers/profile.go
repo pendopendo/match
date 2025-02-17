@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"match-me/database"
@@ -25,10 +26,32 @@ func GetMyProfile(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
-		http.Error(w, "Profile not found", http.StatusNotFound)
-		return
+		log.Printf("Profile not found for user %d, creating new profile", userID)
+
+		// Create empty profile
+		_, err = database.DB.Exec(`
+			INSERT INTO profiles (user_id, name, bio, profile_picture, location)
+			VALUES ($1, '', '', '', '')
+			ON CONFLICT (user_id) DO NOTHING
+		`, userID)
+
+		if err != nil {
+			log.Printf("Error creating profile: %v", err)
+			http.Error(w, "Failed to create profile", http.StatusInternalServerError)
+			return
+		}
+
+		// Initialize empty profile
+		profile = models.Profile{
+			UserID:         userID,
+			Name:           "",
+			Bio:            "",
+			ProfilePicture: "",
+			Location:       "",
+		}
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(profile)
 }
 
@@ -50,10 +73,33 @@ func GetMyBio(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
-		http.Error(w, "Bio not found", http.StatusNotFound)
-		return
+		log.Printf("Bio not found for user %d, creating new bio", userID)
+
+		// Create empty bio
+		_, err = database.DB.Exec(`
+			INSERT INTO user_bios (user_id, interests, hobbies, music_preferences, food_preferences, looking_for)
+			VALUES ($1, ARRAY[]::TEXT[], ARRAY[]::TEXT[], ARRAY[]::TEXT[], ARRAY[]::TEXT[], ARRAY[]::TEXT[])
+			ON CONFLICT (user_id) DO NOTHING
+		`, userID)
+
+		if err != nil {
+			log.Printf("Error creating bio: %v", err)
+			http.Error(w, "Failed to create bio", http.StatusInternalServerError)
+			return
+		}
+
+		// Initialize empty bio
+		bio = models.UserBio{
+			UserID:           userID,
+			Interests:        []string{},
+			Hobbies:          []string{},
+			MusicPreferences: []string{},
+			FoodPreferences:  []string{},
+			LookingFor:       []string{},
+		}
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(bio)
 }
 
